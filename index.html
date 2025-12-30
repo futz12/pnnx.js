@@ -1,0 +1,1139 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PNNX 在线转换</title>
+  <style>
+    :root{
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+
+      /* light */
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --brand:#2563eb;
+      --brand2:#1d4ed8;
+      --danger:#dc2626;
+      --ok:#16a34a;
+      --shadow: 0 10px 24px rgba(0,0,0,.08);
+      --radius:14px;
+
+      --consoleBg:#0b1020;
+      --consoleText:#b7ffb7;
+
+      --pillBg:#fafafa;
+      --panelBg:#fafafa;
+      --modalMask: rgba(0,0,0,.55);
+
+      --inputBg: #ffffff;
+      --inputText: #111827;
+
+      --controlH: 42px;
+      --pad: 14px;
+      --gap: 12px;
+
+      --caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24'%3E%3Cpath fill='%236b7280' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      --chev: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24'%3E%3Cpath fill='%236b7280' d='M9 6l6 6-6 6'/%3E%3C/svg%3E\");
+    }
+    html[data-theme="dark"]{
+      --bg:#0b1020;
+      --card:#0f172a;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --line: rgba(148,163,184,.18);
+      --brand:#60a5fa;
+      --brand2:#3b82f6;
+      --danger:#fb7185;
+      --ok:#34d399;
+      --shadow: 0 12px 28px rgba(0,0,0,.35);
+
+      --consoleBg:#050813;
+      --consoleText:#a7ffb2;
+
+      --pillBg: rgba(2,6,23,.35);
+      --panelBg: rgba(2,6,23,.22);
+      --modalMask: rgba(0,0,0,.65);
+
+      --inputBg: rgba(2,6,23,.25);
+      --inputText: #e5e7eb;
+
+      --caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24'%3E%3Cpath fill='%239ca3af' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      --chev: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24'%3E%3Cpath fill='%239ca3af' d='M9 6l6 6-6 6'/%3E%3C/svg%3E\");
+    }
+
+    html{ color-scheme: light; }
+    html[data-theme="dark"]{ color-scheme: dark; }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{ max-width: 1240px; margin: 0 auto; padding: 16px; }
+
+    .header{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: var(--pad);
+      display:flex;
+      gap: var(--gap);
+      align-items:flex-start;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .title h1{ margin:0; font-size:18px; }
+    .title p{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.35; }
+    .status{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; color:var(--muted); font-size:12.5px; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid var(--line);
+      padding:8px 10px;
+      border-radius:999px;
+      background:var(--pillBg);
+      backdrop-filter: blur(6px);
+    }
+    .dot{ width:9px; height:9px; border-radius:50%; background:#9ca3af; }
+    .dot.ok{ background:var(--ok); }
+    .dot.bad{ background:var(--danger); }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .body{ padding: var(--pad); }
+
+    .main-grid{
+      margin-top:12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+      align-items:start;
+    }
+    @media(max-width:1050px){ .main-grid{ grid-template-columns:1fr; } }
+
+    .section{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panelBg);
+      padding: 12px;
+    }
+    .section + .section{ margin-top: 12px; }
+    .h2{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-weight:900;
+      font-size:13px;
+    }
+    .hint{ margin-top:6px; color:var(--muted); font-size:12px; line-height:1.35; }
+    .mono{ font-family: var(--mono); }
+
+    .grid-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid-3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    @media(max-width:780px){ .grid-2, .grid-3{ grid-template-columns: 1fr; } }
+
+    label{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+      margin: 0 0 6px;
+    }
+
+    input[type="text"], input[type="file"], select, textarea{
+      width:100%;
+      height: var(--controlH);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      outline:none;
+      background: var(--inputBg);
+      color: var(--inputText);
+      font-size:14px;
+    }
+    textarea{
+      height:auto;
+      min-height:84px;
+      resize:vertical;
+    }
+    select{
+      appearance:none;
+      -webkit-appearance:none;
+      -moz-appearance:none;
+      padding-right: 40px;
+      background-image: var(--caret);
+      background-repeat:no-repeat;
+      background-position: calc(100% - 12px) 50%;
+      background-size: 18px 18px;
+    }
+    option{ color:#111827; background:#ffffff; }
+    html[data-theme="dark"] option{ color:#e5e7eb; background:#0b1220; }
+
+    .btnbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top: 10px;
+    }
+    button{
+      border:0;
+      background: var(--brand);
+      color:#fff;
+      height: var(--controlH);
+      padding:0 14px;
+      border-radius:12px;
+      font-weight:700;
+      cursor:pointer;
+      font-size:13px;
+    }
+    button:hover{ background: var(--brand2); }
+    button:disabled{ background:#94a3b8; cursor:not-allowed; }
+    .btn-secondary{
+      background: rgba(148,163,184,.20);
+      color: var(--text);
+      border:1px solid var(--line);
+    }
+    .btn-secondary:hover{ background: rgba(148,163,184,.30); }
+    .btn-ghost{
+      background: rgba(37,99,235,.10);
+      color: var(--text);
+      border:1px solid var(--line);
+    }
+    .btn-ghost:hover{ background: rgba(37,99,235,.16); }
+    .btn-danger{ background: var(--danger); }
+    .btn-danger:hover{ filter: brightness(.95); }
+
+    .checkrow{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12.5px;
+      user-select:none;
+    }
+    .checkrow input{ width:auto; height:auto; transform: scale(1.08); }
+
+    .shape-list{ display:flex; flex-direction:column; gap:10px; }
+    .shape-row{
+      display:grid;
+      grid-template-columns: 1fr 160px 92px;
+      gap: 10px;
+      align-items:end;
+    }
+    @media(max-width:780px){
+      .shape-row{ grid-template-columns: 1fr 160px; }
+      .shape-row .del{ grid-column: 1 / -1; }
+    }
+    .preview{
+      margin-top:10px;
+      border:1px dashed var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      background:transparent;
+      font-family: var(--mono);
+      font-size:12.5px;
+      color:var(--text);
+      white-space:pre-wrap;
+      word-break:break-all;
+    }
+
+    details{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      overflow:hidden;
+      background: transparent;
+      margin-top: 12px;
+    }
+    details summary{
+      cursor:pointer;
+      list-style:none;
+      padding: 12px 12px;
+      font-weight:900;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      user-select:none;
+    }
+    details summary::-webkit-details-marker{ display:none; }
+    details summary .rightcue{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      color:var(--muted);
+      font-weight:700;
+      font-size:12px;
+    }
+    details summary .chev{
+      width:18px; height:18px;
+      background-image: var(--chev);
+      background-size: 18px 18px;
+      background-repeat:no-repeat;
+      background-position:center;
+      transform: rotate(0deg);
+      transition: transform .15s ease;
+      opacity:.9;
+    }
+    details[open] summary .chev{ transform: rotate(90deg); }
+    details .inner{
+      padding: 12px;
+      border-top:1px solid var(--line);
+      background: var(--panelBg);
+    }
+
+    .console{
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:var(--consoleBg);
+      color:var(--consoleText);
+      padding:10px 12px;
+      height: 270px;
+      overflow:auto;
+      font-family: var(--mono);
+      font-size:12.5px;
+      white-space: pre-wrap;
+    }
+
+    /* log header actions */
+    .log-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .copy-btn{
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 800;
+      background: rgba(148,163,184,.18);
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+    .copy-btn:hover{ background: rgba(148,163,184,.28); }
+    .copy-hint{
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      white-space:nowrap;
+    }
+    @media(max-width:520px){
+      .copy-hint{ white-space:normal; }
+    }
+
+    .tablewrap{
+      border:1px solid var(--line);
+      border-radius:12px;
+      overflow:hidden;
+      margin-top:10px;
+      background: transparent;
+    }
+    table{ width:100%; border-collapse:collapse; }
+    th, td{
+      padding:10px 10px;
+      border-bottom:1px solid var(--line);
+      text-align:left;
+      font-size:13px;
+    }
+    th{ background:var(--panelBg); color:var(--muted); font-weight:900; }
+    tr:last-child td{ border-bottom:none; }
+    .right{ text-align:right; }
+
+    /* Donate: round floating bottom-right */
+    .donate-fab{
+      position:fixed;
+      right: 16px;
+      bottom: 16px;
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      background: var(--brand);
+      color:#fff;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.14);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      z-index: 1200;
+      font-weight: 900;
+      letter-spacing: .5px;
+    }
+    .donate-fab:hover{ background: var(--brand2); }
+    .donate-fab:active{ transform: translateY(1px); }
+    .donate-fab .small{ font-size: 12.5px; line-height: 1; }
+
+    /* Modal */
+    .modal{
+      position:fixed;
+      inset:0;
+      background: var(--modalMask);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:2000;
+      padding: 16px;
+    }
+    .modal.show{ display:flex; }
+    .modal-card{
+      width: min(860px, 100%);
+      background: var(--card);
+      border-radius: 16px;
+      border:1px solid var(--line);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .modal-head{
+      padding: 12px 14px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modal-head .t{ font-weight:900; }
+    .modal-body{ padding: 14px; }
+    .qr-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media(max-width:760px){ .qr-grid{ grid-template-columns:1fr; } }
+    .qr-card{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding: 12px;
+      background:var(--panelBg);
+    }
+    .qr-card .h{ font-weight:900; margin-bottom:8px; }
+    .qr-img{
+      width:100%;
+      aspect-ratio: 1 / 1;
+      border:1px dashed var(--line);
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      background: transparent;
+    }
+    .qr-img img{ width:100%; height:100%; object-fit:contain; }
+
+    .footer{
+      margin-top: 14px;
+      padding: 12px 0 4px;
+      color: var(--muted);
+      font-size: 12.5px;
+      text-align:center;
+    }
+    .footer a{ color: var(--brand); text-decoration:none; }
+    .footer a:hover{ text-decoration:underline; }
+
+    /* toast */
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 92px;
+      transform: translateX(-50%);
+      background: rgba(17,24,39,.92);
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.12);
+      z-index: 2500;
+      display:none;
+      font-size: 12.5px;
+      font-weight: 800;
+    }
+    html[data-theme="dark"] .toast{ background: rgba(2,6,23,.92); }
+    .toast.show{ display:block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">
+        <h1>PNNX 在线转换</h1>
+        <p>支持 <span class="mono">TorchScript .pt</span> 和 <span class="mono">.onnx</span>（不支持 .pth）。inputshape 默认给一行示例，可清空代表自动推断。</p>
+      </div>
+      <div class="status">
+        <div class="pill"><span class="dot" id="dotWasm"></span><span id="wasmStatus">WASM 加载中…</span></div>
+        <div class="pill">
+          <button id="themeBtn" class="btn-secondary" type="button" style="height:34px;padding:0 12px;border-radius:999px;">切换深色/浅色</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <!-- 左：参数 -->
+      <div class="card">
+        <div class="body">
+          <div class="section">
+            <div class="h2">模型</div>
+            <div>
+              <label>模型文件（.pt / .onnx）</label>
+              <input type="file" id="modelFile" accept=".pt,.onnx">
+              <div class="hint" id="modelHint">未选择模型</div>
+            </div>
+
+            <div class="btnbar">
+              <button id="runBtn" disabled>加载 WASM 中…</button>
+              <button class="btn-secondary" id="clearLogBtn" disabled>清空日志</button>
+              <button class="btn-danger" id="clearWorkBtn" disabled>清空输出区</button>
+            </div>
+
+            <div class="checkrow">
+              <input type="checkbox" id="autoClearBeforeRun" checked>
+              <span>运行前清空输出区</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="h2">
+              <span>inputshape（可选）</span>
+              <span class="hint" style="margin:0;">清空后表示自动推断</span>
+            </div>
+
+            <div class="shape-list" id="list_inputshape"></div>
+
+            <div class="btnbar">
+              <button class="btn-ghost" type="button" id="add_inputshape">+ 添加输入</button>
+              <button class="btn-ghost" type="button" id="preset_yolo_inputshape">YOLO 640</button>
+              <button class="btn-ghost" type="button" id="preset_two_inputs">双输入示例</button>
+              <button class="btn-secondary" type="button" id="clear_inputshape">清空（自动推断）</button>
+              <button class="btn-danger" type="button" id="reset_inputshape">重置默认</button>
+            </div>
+
+            <div class="preview" id="preview_inputshape"></div>
+            <div class="hint">dtype：<span class="mono">f16 / f32 / i32</span>。多输入示例：<span class="mono">[[1,3,640,640]f32,[1,160]f32]</span></div>
+          </div>
+
+          <details>
+            <summary>
+              <span>高级参数（可选）</span>
+              <span class="rightcue">点击展开 <span class="chev" aria-hidden="true"></span></span>
+            </summary>
+            <div class="inner">
+              <div class="grid-3">
+                <div>
+                  <label><span>device</span></label>
+                  <select id="device">
+                    <option value="">（不设置）</option>
+                    <option value="cpu">cpu</option>
+                    <option value="gpu">gpu</option>
+                  </select>
+                </div>
+                <div>
+                  <label><span>fp16</span></label>
+                  <select id="fp16">
+                    <option value="">（不设置）</option>
+                    <option value="1">1（开启）</option>
+                    <option value="0">0（关闭）</option>
+                  </select>
+                </div>
+                <div>
+                  <label><span>optlevel</span></label>
+                  <select id="optlevel">
+                    <option value="">（不设置）</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2" selected>2（常用）</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="margin-top:10px;">
+                <label>moduleop（逗号分隔）</label>
+                <textarea id="moduleop" placeholder="例如: models.common.Focus,models.yolo.Detect"></textarea>
+              </div>
+
+              <div style="margin-top:10px;">
+                <label>额外参数（空格分隔 key=value）</label>
+                <input type="text" id="extraArgs" placeholder="例如: ncnnpy=model_ncnn.py pnnxonnx=model.pnnx.onnx">
+                <div class="hint">只做简单空格拆分，不支持带空格的值。</div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- 右：输出+日志 -->
+      <div class="card">
+        <details open>
+          <summary>
+            <span>输出文件（下载/删除）</span>
+            <span class="rightcue">筛选/勾选 <span class="chev" aria-hidden="true" style="transform:rotate(90deg)"></span></span>
+          </summary>
+          <div class="inner">
+            <div class="grid-2">
+              <div>
+                <label>搜索文件名（可选）</label>
+                <input type="text" id="fileSearch" placeholder="例如：ncnn / param / bin / py / onnx">
+              </div>
+              <div>
+                <label>操作</label>
+                <div class="btnbar" style="margin-top:0;">
+                  <button class="btn-ghost" id="refreshFilesBtn" disabled>刷新</button>
+                  <button id="downloadBtn" disabled>下载所选</button>
+                  <button id="downloadAndDeleteBtn" disabled>下载并删除</button>
+                  <button class="btn-danger" id="deleteSelectedBtn" disabled>删除所选</button>
+                </div>
+                <div class="hint" id="fileListHint">尚未运行</div>
+              </div>
+            </div>
+
+            <div class="tablewrap" id="fileTableWrap"></div>
+          </div>
+        </details>
+
+        <details open>
+          <summary>
+            <span>运行日志</span>
+            <div class="log-actions">
+              <span class="copy-hint">遇到转换问题？点“复制日志”发送给大佬们更方便排查</span>
+              <button class="copy-btn" id="copyLogBtn" type="button">复制日志</button>
+              <span class="rightcue">可展开/收起 <span class="chev" aria-hidden="true" style="transform:rotate(90deg)"></span></span>
+            </div>
+          </summary>
+          <div class="inner">
+            <div id="console" class="console"></div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>赣ICP备2025053899号-1</div>
+      <div>
+        GitHub：<a href="https://github.com/futz12" target="_blank" rel="noopener noreferrer">github.com/futz12</a> ·
+        QQ群：<span class="mono">767178345</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右下角圆形捐赠按钮 -->
+  <div class="donate-fab" id="donateFab" title="捐赠">
+    <div class="small">捐赠</div>
+  </div>
+
+  <!-- 捐赠弹窗（收款码硬编码） -->
+  <div class="modal" id="donateModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="t">捐赠支持（将用于）</div>
+        <button class="btn-secondary" id="donateCloseBtn" type="button" style="height:34px;padding:0 12px;border-radius:10px;">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="qr-grid" style="margin-top:12px;">
+          <div class="qr-card">
+            <div class="h">微信收款码</div>
+            <div class="qr-img"><img id="wechatImg" alt="微信收款码"></div>
+          </div>
+          <div class="qr-card">
+            <div class="h">支付宝收款码</div>
+            <div class="qr-img"><img id="alipayImg" alt="支付宝收款码"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- toast -->
+  <div class="toast" id="toast">已复制到剪贴板</div>
+
+  <script src="pnnx.js"></script>
+  <script>
+    // 收款码硬编码
+    const WECHAT_QR_SRC = "./wechat.png";
+    const ALIPAY_QR_SRC = "./alipay.png";
+    document.getElementById("wechatImg").src = WECHAT_QR_SRC;
+    document.getElementById("alipayImg").src = ALIPAY_QR_SRC;
+
+    // Theme: auto detect + manual override
+    const themeBtn = document.getElementById("themeBtn");
+    const mediaDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
+    function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); }
+    function getStoredTheme(){ return localStorage.getItem("theme"); }
+    function autoTheme(){ applyTheme((mediaDark && mediaDark.matches) ? "dark" : "light"); }
+    function initTheme(){
+      const stored = getStoredTheme();
+      if(stored === "light" || stored === "dark") applyTheme(stored);
+      else autoTheme();
+    }
+    initTheme();
+    function onSystemThemeChange(){
+      const stored = getStoredTheme();
+      if(stored !== "light" && stored !== "dark") autoTheme();
+    }
+    if(mediaDark && typeof mediaDark.addEventListener === "function") mediaDark.addEventListener("change", onSystemThemeChange);
+    else if(mediaDark && typeof mediaDark.addListener === "function") mediaDark.addListener(onSystemThemeChange);
+
+    themeBtn.addEventListener("click", ()=>{
+      const cur = document.documentElement.getAttribute("data-theme") || "light";
+      const next = cur === "dark" ? "light" : "dark";
+      applyTheme(next);
+      localStorage.setItem("theme", next);
+    });
+
+    // Core
+    let pnnxModule = null;
+    const WORK_DIR = "/work";
+
+    const dotWasm = document.getElementById("dotWasm");
+    const wasmStatus = document.getElementById("wasmStatus");
+
+    const modelFileEl = document.getElementById("modelFile");
+    const modelHint = document.getElementById("modelHint");
+
+    const runBtn = document.getElementById("runBtn");
+    const clearLogBtn = document.getElementById("clearLogBtn");
+    const clearWorkBtn = document.getElementById("clearWorkBtn");
+
+    const consoleDiv = document.getElementById("console");
+    const list_inputshape = document.getElementById("list_inputshape");
+    const preview_inputshape = document.getElementById("preview_inputshape");
+
+    const fileSearch = document.getElementById("fileSearch");
+    const refreshFilesBtn = document.getElementById("refreshFilesBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const downloadAndDeleteBtn = document.getElementById("downloadAndDeleteBtn");
+    const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+    const fileListHint = document.getElementById("fileListHint");
+    const fileTableWrap = document.getElementById("fileTableWrap");
+
+    // Donate modal
+    const donateFab = document.getElementById("donateFab");
+    const donateModal = document.getElementById("donateModal");
+    const donateCloseBtn = document.getElementById("donateCloseBtn");
+    function openDonate(){ donateModal.classList.add("show"); donateModal.setAttribute("aria-hidden","false"); }
+    function closeDonate(){ donateModal.classList.remove("show"); donateModal.setAttribute("aria-hidden","true"); }
+    donateFab.addEventListener("click", openDonate);
+    donateCloseBtn.addEventListener("click", closeDonate);
+    donateModal.addEventListener("click", (e)=>{ if(e.target === donateModal) closeDonate(); });
+    window.addEventListener("keydown",(e)=>{ if(e.key === "Escape") closeDonate(); });
+
+    // Toast
+    const toastEl = document.getElementById("toast");
+    let toastTimer = null;
+    function showToast(msg){
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=>toastEl.classList.remove("show"), 1400);
+    }
+
+    // Logging (cap)
+    const LOG_MAX_LINES = 1500;
+    let logLines = [];
+    function log(text) {
+      const line = text.endsWith("\n") ? text.slice(0,-1) : text;
+      logLines.push(line);
+      if (logLines.length > LOG_MAX_LINES) logLines = logLines.slice(-LOG_MAX_LINES);
+      consoleDiv.textContent = logLines.join("\n") + "\n";
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+      console.log(text);
+    }
+    function humanBytes(bytes){
+      const units=["B","KB","MB","GB"];
+      let b=bytes, i=0;
+      while(b>=1024 && i<units.length-1){ b/=1024; i++; }
+      return `${b.toFixed(i===0?0:2)} ${units[i]}`;
+    }
+
+    // Copy log button
+    const copyLogBtn = document.getElementById("copyLogBtn");
+    async function copyText(text){
+      // Prefer navigator.clipboard; fallback for older browsers
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    copyLogBtn.addEventListener("click", async (e)=>{
+      e.preventDefault();
+      e.stopPropagation(); // avoid toggling details
+      const text = (consoleDiv.textContent || "").trim();
+      if (!text) return showToast("日志为空，暂无可复制内容");
+      try{
+        await copyText(text);
+        showToast("✅ 已复制日志到剪贴板");
+      }catch(err){
+        showToast("❌ 复制失败，请手动选择复制");
+      }
+    });
+
+    // Guard
+    function isSupportedModelFile(file) {
+      const name = (file?.name || "").toLowerCase();
+      if (name.endsWith(".pth")) return false;
+      return name.endsWith(".pt") || name.endsWith(".onnx");
+    }
+    modelFileEl.addEventListener("change", () => {
+      const f = modelFileEl.files && modelFileEl.files[0];
+      if (!f) { modelHint.textContent = "未选择模型"; return; }
+      if (!isSupportedModelFile(f)) {
+        alert("只支持 TorchScript .pt 或 .onnx（不支持 .pth）。");
+        modelFileEl.value = "";
+        modelHint.textContent = "未选择模型";
+        return;
+      }
+      modelHint.textContent = `${f.name} · ${humanBytes(f.size)}`;
+    });
+
+    // FS helpers
+    function ensureWorkDir() {
+      try { pnnxModule.FS.mkdir(WORK_DIR); } catch(e) {}
+      try { pnnxModule.FS.chdir(WORK_DIR); } catch(e) {}
+    }
+    async function writeFileToFS(file, targetPath) {
+      const buf = await file.arrayBuffer();
+      pnnxModule.FS.writeFile(targetPath, new Uint8Array(buf));
+    }
+    function listFilesInWorkDir() {
+      ensureWorkDir();
+      const names = pnnxModule.FS.readdir(WORK_DIR).filter(n => n !== "." && n !== "..");
+      const out = [];
+      for (const name of names) {
+        const full = `${WORK_DIR}/${name}`;
+        try {
+          const st = pnnxModule.FS.stat(full);
+          if (pnnxModule.FS.isFile(st.mode)) out.push({ name, full, size: st.size });
+        } catch(e) {}
+      }
+      out.sort((a,b)=>a.name.localeCompare(b.name));
+      return out;
+    }
+    function deleteAllInWorkDir() {
+      for (const f of listFilesInWorkDir()) {
+        try { pnnxModule.FS.unlink(f.full); } catch(e) {}
+      }
+    }
+
+    // Output UI
+    let cachedFiles = [];
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+    }
+    function renderFileTable() {
+      const q = (fileSearch.value || "").trim().toLowerCase();
+      const files = cachedFiles.filter(f => !q || f.name.toLowerCase().includes(q));
+
+      if (!files.length) {
+        fileTableWrap.innerHTML = `<div class="hint" style="padding:10px 12px;">（无文件）</div>`;
+        return;
+      }
+
+      const rows = files.map(f => `
+        <tr>
+          <td style="width:36px;"><input class="fileCheck" type="checkbox" checked data-full="${f.full}"></td>
+          <td class="mono">${escapeHtml(f.name)}</td>
+          <td class="right" style="color:var(--muted)">${escapeHtml(humanBytes(f.size))}</td>
+        </tr>
+      `).join("");
+
+      fileTableWrap.innerHTML = `
+        <table>
+          <thead><tr><th></th><th>文件名</th><th class="right">大小</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+    function refreshFileListUI() {
+      cachedFiles = listFilesInWorkDir();
+      fileListHint.textContent = cachedFiles.length ? `共 ${cachedFiles.length} 个文件（可勾选下载）` : "工作区为空";
+      renderFileTable();
+
+      const has = cachedFiles.length > 0;
+      refreshFilesBtn.disabled = false;
+      downloadBtn.disabled = !has;
+      downloadAndDeleteBtn.disabled = !has;
+      deleteSelectedBtn.disabled = !has;
+      clearWorkBtn.disabled = false;
+    }
+    fileSearch.addEventListener("input", renderFileTable);
+
+    function getSelectedFiles() {
+      return Array.from(document.querySelectorAll("input.fileCheck"))
+        .filter(c => c.checked)
+        .map(c => c.getAttribute("data-full"));
+    }
+    function triggerDownload(uint8Array, filename) {
+      const blob = new Blob([uint8Array], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    async function downloadSelected({ deleteAfter=false } = {}) {
+      const selected = getSelectedFiles();
+      if (!selected.length) { alert("请先勾选至少一个文件。"); return; }
+      for (const full of selected) {
+        const name = full.split("/").pop();
+        try {
+          const content = pnnxModule.FS.readFile(full);
+          log(`⬇️ 下载: ${name} (${content.length} bytes)`);
+          triggerDownload(content, name);
+          if (deleteAfter) {
+            try { pnnxModule.FS.unlink(full); } catch(e) {}
+            log(`🧹 已删除: ${name}`);
+          }
+        } catch (e) {
+          log(`❌ 下载失败: ${name} -> ${e}`);
+        }
+        await new Promise(r => setTimeout(r, 30));
+      }
+      refreshFileListUI();
+    }
+    refreshFilesBtn.addEventListener("click", refreshFileListUI);
+    downloadBtn.addEventListener("click", () => downloadSelected({ deleteAfter:false }));
+    downloadAndDeleteBtn.addEventListener("click", () => downloadSelected({ deleteAfter:true }));
+    deleteSelectedBtn.addEventListener("click", () => {
+      const selected = getSelectedFiles();
+      if (!selected.length) return alert("请先勾选至少一个文件。");
+      if (!confirm(`确定删除所选 ${selected.length} 个文件吗？`)) return;
+      for (const full of selected) {
+        const name = full.split("/").pop();
+        try { pnnxModule.FS.unlink(full); } catch(e) {}
+        log(`🧹 已删除: ${name}`);
+      }
+      refreshFileListUI();
+    });
+
+    clearLogBtn.addEventListener("click", () => { logLines = []; consoleDiv.textContent = ""; });
+    clearWorkBtn.addEventListener("click", () => {
+      if (!confirm("确定清空输出区吗？这会删除所有输出文件。")) return;
+      deleteAllInWorkDir();
+      log("🧹 已清空输出区");
+      refreshFileListUI();
+    });
+
+    // Shapes (optional, default has one row)
+    function addShapeRow(listEl, dims="1,3,224,224", dtype="f32") {
+      const row = document.createElement("div");
+      row.className = "shape-row";
+      row.innerHTML = `
+        <div>
+          <label>维度（逗号分隔）</label>
+          <input class="dims" type="text" value="${dims}" placeholder="例如：1,3,640,640 或 [1,3,640,640]">
+        </div>
+        <div>
+          <label><span>dtype</span></label>
+          <select class="dtype">
+            <option value="f16">f16</option>
+            <option value="f32" selected>f32</option>
+            <option value="i32">i32</option>
+          </select>
+        </div>
+        <div class="del">
+          <button class="btn-danger" type="button" style="width:100%;">删除</button>
+        </div>
+      `;
+      const dtypeSel = row.querySelector(".dtype");
+      dtypeSel.value = (dtype === "f16" || dtype === "f32" || dtype === "i32") ? dtype : "f32";
+
+      row.querySelector("button").addEventListener("click", () => {
+        row.remove();
+        updateShapePreview();
+      });
+      row.querySelector(".dims").addEventListener("input", updateShapePreview);
+      dtypeSel.addEventListener("change", updateShapePreview);
+
+      listEl.appendChild(row);
+      updateShapePreview();
+    }
+
+    function normalizeShapeToken(dimsText, dtype) {
+      let t = (dimsText || "").trim().replace(/\s+/g,"");
+      if (!t) return "";
+      const m = t.match(/^(.*?)(f16|f32|i32)$/);
+      if (m) { t = m[1]; dtype = m[2]; }
+      if (!t.startsWith("[")) t = "[" + t;
+      if (!t.endsWith("]")) t = t + "]";
+      return t + (dtype || "");
+    }
+
+    function buildShapeValue(listEl) {
+      const rows = Array.from(listEl.querySelectorAll(".shape-row"));
+      const tokens = [];
+      for (const r of rows) {
+        const dims = r.querySelector(".dims").value;
+        const dtype = r.querySelector(".dtype").value;
+        const token = normalizeShapeToken(dims, dtype);
+        if (token) tokens.push(token);
+      }
+      if (!tokens.length) return ""; // empty => auto infer
+      if (tokens.length === 1) return tokens[0];
+      return `[${tokens.join(",")}]`;
+    }
+
+    function updateShapePreview() {
+      const v = buildShapeValue(list_inputshape);
+      preview_inputshape.textContent = v ? v : "（未设置 inputshape：将使用自动推断）";
+    }
+
+    document.getElementById("add_inputshape").addEventListener("click", () => addShapeRow(list_inputshape, "1,3,224,224", "f32"));
+    document.getElementById("reset_inputshape").addEventListener("click", () => {
+      list_inputshape.innerHTML = "";
+      addShapeRow(list_inputshape, "1,3,224,224", "f32");
+    });
+    document.getElementById("clear_inputshape").addEventListener("click", () => {
+      list_inputshape.innerHTML = "";
+      updateShapePreview();
+    });
+    document.getElementById("preset_yolo_inputshape").addEventListener("click", () => {
+      list_inputshape.innerHTML = "";
+      addShapeRow(list_inputshape, "1,3,640,640", "f32");
+    });
+    document.getElementById("preset_two_inputs").addEventListener("click", () => {
+      list_inputshape.innerHTML = "";
+      addShapeRow(list_inputshape, "1,3,640,640", "f32");
+      addShapeRow(list_inputshape, "1,160", "f32");
+    });
+
+    // default row
+    addShapeRow(list_inputshape, "1,3,224,224", "f32");
+    updateShapePreview();
+
+    // Args builder
+    function buildArgs(modelPath) {
+      const args = [modelPath];
+
+      const shapeVal = buildShapeValue(list_inputshape);
+      if (shapeVal) args.push(`inputshape=${shapeVal}`);
+
+      const device = document.getElementById("device").value.trim();
+      const fp16 = document.getElementById("fp16").value.trim();
+      const optlevel = document.getElementById("optlevel").value.trim();
+      const moduleop = document.getElementById("moduleop").value.trim();
+      const extraArgs = document.getElementById("extraArgs").value.trim();
+
+      if (device) args.push(`device=${device}`);
+      if (fp16) args.push(`fp16=${fp16}`);
+      if (optlevel) args.push(`optlevel=${optlevel}`);
+      if (moduleop) args.push(`moduleop=${moduleop}`);
+      if (extraArgs) args.push(...extraArgs.split(/\s+/).filter(Boolean));
+
+      return { ok:true, args };
+    }
+
+    // Run (no time prefix)
+    runBtn.addEventListener("click", async () => {
+      if (!pnnxModule) return alert("WASM 还未加载完成。");
+      const fileInput = modelFileEl;
+
+      if (!fileInput.files || fileInput.files.length === 0) return alert("请选择 .pt 或 .onnx 文件。");
+      const modelFile = fileInput.files[0];
+      if (!isSupportedModelFile(modelFile)) return alert("只支持 TorchScript .pt 或 .onnx（不支持 .pth）。");
+
+      runBtn.disabled = true;
+      runBtn.textContent = "转换中…";
+      log("\n--- 开始新任务 ---");
+
+      let modelPath = "";
+      try {
+        ensureWorkDir();
+
+        if (document.getElementById("autoClearBeforeRun").checked) {
+          deleteAllInWorkDir();
+          log("🧹 已清空输出区");
+        }
+
+        const safeModelName = modelFile.name.replace(/[^\w.\-()+]/g, "_");
+        modelPath = `${WORK_DIR}/${safeModelName}`;
+        try { pnnxModule.FS.unlink(modelPath); } catch(e) {}
+
+        log(`📦 写入模型: ${safeModelName} (${humanBytes(modelFile.size)})`);
+        await writeFileToFS(modelFile, modelPath);
+        log("✅ 模型写入完成");
+
+        const built2 = buildArgs(modelPath);
+        log(`🧾 执行：pnnx ${built2.args.join(" ")}`);
+
+        await new Promise(r => setTimeout(r, 60));
+
+        try {
+          pnnxModule.callMain(built2.args);
+          log("✅ pnnx 执行结束");
+        } catch (execErr) {
+          log("❌ 运行时错误: " + execErr);
+          if (execErr && typeof execErr.status !== "undefined") log("退出码: " + execErr.status);
+        }
+
+        refreshFileListUI();
+
+      } catch (e) {
+        log("❌ 错误: " + e);
+      } finally {
+        if (modelPath) {
+          try { pnnxModule.FS.unlink(modelPath); log("🧹 已删除输入模型文件"); } catch(e) {}
+        }
+        try { fileInput.value = ""; } catch(e) {}
+        modelHint.textContent = "未选择模型";
+
+        runBtn.disabled = false;
+        runBtn.textContent = "开始转换";
+      }
+    });
+
+    // Init WASM
+    createPnnxModule({
+      print: (t)=>log(t),
+      printErr: (t)=>log("[STDERR] " + t),
+      setStatus: (t)=>{ if(t) log("[System] " + t); }
+    }).then(instance => {
+      pnnxModule = instance;
+      ensureWorkDir();
+
+      dotWasm.classList.add("ok");
+      wasmStatus.textContent = "WASM 已就绪";
+
+      runBtn.disabled = false;
+      runBtn.textContent = "开始转换";
+      clearLogBtn.disabled = false;
+      refreshFilesBtn.disabled = false;
+      clearWorkBtn.disabled = false;
+
+      refreshFileListUI();
+      log("✅ PNNX 模块加载完成。");
+    }).catch(err => {
+      dotWasm.classList.add("bad");
+      wasmStatus.textContent = "加载失败";
+      log("❌ 模块加载失败: " + err);
+    });
+  </script>
+</body>
+</html>
