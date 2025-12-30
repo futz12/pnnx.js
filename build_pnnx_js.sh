@@ -188,7 +188,6 @@ emcmake cmake .. \
         -s ENVIRONMENT='web,worker' \
         -s DISABLE_EXCEPTION_CATCHING=1 \
         -s MALLOC='emmalloc' \
-        --closure 1 \
         -s STACK_SIZE=52428800 \
         -s INITIAL_MEMORY=134217728 \
         -L$INSTALL_DIR/lib \
