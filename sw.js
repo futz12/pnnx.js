@@ -1,19 +1,28 @@
-const CACHE_NAME = "pnnx-assets-v1";
-
+const CACHE_NAME = "pnnx-assets-v2";
 
 const CDN_JS   = "https://mirrors.sdu.edu.cn/ncnn_modelzoo/pnnx/pnnx.js";
 const CDN_WASM = "https://mirrors.sdu.edu.cn/ncnn_modelzoo/pnnx/pnnx.wasm";
 
-self.addEventListener("install", () => {
+self.addEventListener("install", (event) => {
   self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.allSettled([
+      cache.add(CDN_JS),
+      cache.add(CDN_WASM),
+      cache.add("./pnnx.js").catch(()=>{}),
+      cache.add("./pnnx.wasm").catch(()=>{}),
+    ]);
+  })());
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => (k !== CACHE_NAME) ? caches.delete(k) : Promise.resolve()));
     await self.clients.claim();
   })());
 });
-
 
 self.addEventListener("message", (event) => {
   const data = event.data || {};
