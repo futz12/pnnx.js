@@ -10,11 +10,9 @@ echo ">>> 工作目录: $WORK_DIR"
 echo ">>> 安装目录: $INSTALL_DIR"
 echo ">>> 使用核心数: $CPU_CORES"
 
-# 全局体积优化标志 (Wasm64 + 体积优化 + LTO)
-# -Oz: 激进的体积优化
-# -flto: 链接时优化
-# -g0: 移除调试信息
-OPT_FLAGS="-s MEMORY64=1 -D_LARGEFILE64_SOURCE -Oz -flto -g0"
+OPT_FLAGS="-s MEMORY64=1 -D_LARGEFILE64_SOURCE -Oz -flto"
+
+rm -rf "$INSTALL_DIR"
 
 # 创建安装目录
 mkdir -p "$INSTALL_DIR"
@@ -31,22 +29,22 @@ cd "$WORK_DIR/emsdk"
 source ./emsdk_env.sh
 cd "$WORK_DIR"
 
-export CFLAGS="$OPT_FLAGS"
-export CXXFLAGS="$OPT_FLAGS"
-export LDFLAGS="$OPT_FLAGS"
-
 # ================= 2. PyTorch (Host Protoc & Wasm Libs) =================
 echo ">>> [2/5] 准备 PyTorch..."
-if [ ! -d "pytorch_wasm" ]; then
-    git clone https://github.com/futz12/pytorch_wasm pytorch_wasm
-    cd pytorch_wasm
+if [ ! -d "pytorch" ]; then
+    git clone https://github.com/pytorch/pytorch
+    cd pytorch
     git submodule sync && git submodule update --init --recursive
     cd "$WORK_DIR"
 fi
 
 # --- 2.1 编译 Host Protoc (本机工具) ---
 echo ">>> [2.1] 编译 Host Protoc..."
-cd pytorch_wasm
+
+cd pytorch
+
+rm -rf build_host
+
 cmake -Bbuild_host \
     -DBUILD_CUSTOM_PROTOBUF=ON \
     -DPROTOBUF_PROTOC_EXECUTABLE="" \
@@ -61,7 +59,14 @@ fi
 echo ">>> 使用 Host Protoc: $HOST_PROTOC_PATH"
 
 # --- 2.2 编译 PyTorch Wasm 库 (MinSizeRel) ---
+export CFLAGS="$OPT_FLAGS"
+export CXXFLAGS="$OPT_FLAGS"
+export LDFLAGS="$OPT_FLAGS"
+
 echo ">>> [2.2] 编译 PyTorch Wasm 库..."
+
+rm -rf build_wasm
+
 emcmake cmake -Bbuild_wasm \
     -DCMAKE_PREFIX_PATH="$INSTALL_DIR" \
     -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
@@ -89,6 +94,8 @@ if [ ! -d "onnxruntime" ]; then
 fi
 cd onnxruntime
 
+rm -rf build_wasm
+
 mkdir -p build_wasm && cd build_wasm
 
 emcmake cmake ../cmake \
@@ -107,7 +114,6 @@ emcmake cmake ../cmake \
     -Donnxruntime_DISABLE_CONTRIB_OPS=ON \
     -Donnxruntime_DISABLE_ML_OPS=ON \
     -Donnxruntime_USE_EXTENSIONS=OFF \
-    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
     -DCMAKE_C_FLAGS="$OPT_FLAGS -DORT_WASM64" \
     -DCMAKE_CXX_FLAGS="$OPT_FLAGS -DORT_WASM64"
 
@@ -122,33 +128,35 @@ cd "$WORK_DIR"
 
 # ================= 4. Torchvision (Wasm64 - MinSizeRel) =================
 echo ">>> [4/5] 编译 Torchvision (No Image)..."
-if [ ! -d "torchvision" ]; then
+if [ ! -d "vision" ]; then
     git clone https://github.com/pytorch/vision
-    cd vision
-    mkdir -p build_wasm && cd build_wasm
-    
-    emcmake cmake .. \
-        -DCMAKE_PREFIX_PATH="$INSTALL_DIR" \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
-        -DCMAKE_FIND_ROOT_PATH="$INSTALL_DIR" \
-        -DTorch_DIR="$INSTALL_DIR/share/cmake/Torch" \
-        -DTORCH_LIBRARY="$INSTALL_DIR/lib/libtorch.a" \
-        -DTORCH_INCLUDE_DIRECTORIES="$INSTALL_DIR/include" \
-        -DCMAKE_CXX_FLAGS="-I$INSTALL_DIR/include/torch/csrc/api/include -I$INSTALL_DIR/include $OPT_FLAGS" \
-        -DCMAKE_C_FLAGS="$OPT_FLAGS" \
-        -DCMAKE_BUILD_TYPE=MinSizeRel \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DWITH_CUDA=OFF -DWITH_IMAGE=OFF -DWITH_PNG=OFF -DWITH_JPEG=OFF \
-        -DBUILD_PYTHON=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TEST=OFF
-        
-    emmake make install -j$CPU_CORES
-    cd "$WORK_DIR"
 fi
+cd vision
+rm -rf build_wasm
+
+mkdir -p build_wasm && cd build_wasm
+    
+emcmake cmake .. \
+    -DCMAKE_PREFIX_PATH="$INSTALL_DIR" \
+    -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+    -DCMAKE_FIND_ROOT_PATH="$INSTALL_DIR" \
+    -DTorch_DIR="$INSTALL_DIR/share/cmake/Torch" \
+    -DTORCH_LIBRARY="$INSTALL_DIR/lib/libtorch.a" \
+    -DTORCH_INCLUDE_DIRECTORIES="$INSTALL_DIR/include" \
+    -DCMAKE_CXX_FLAGS="-I$INSTALL_DIR/include/torch/csrc/api/include -I$INSTALL_DIR/include $OPT_FLAGS" \
+    -DCMAKE_C_FLAGS="$OPT_FLAGS" \
+    -DCMAKE_BUILD_TYPE=MinSizeRel \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DWITH_CUDA=OFF -DWITH_IMAGE=OFF -DWITH_PNG=OFF -DWITH_JPEG=OFF \
+    -DBUILD_PYTHON=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TEST=OFF
+        
+emmake make install -j$CPU_CORES
+cd "$WORK_DIR"
 
 # ================= 5. PNNX (Wasm64 - 最终链接) =================
 echo ">>> [5/5] 编译 PNNX..."
 if [ -z "$HOST_PROTOC_PATH" ]; then
-     HOST_PROTOC_PATH="$WORK_DIR/pytorch_wasm/build_host/bin/protoc"
+     HOST_PROTOC_PATH="$WORK_DIR/pytorch/build_host/bin/protoc"
 fi
 
 if [ ! -d "ncnn" ]; then
@@ -156,7 +164,10 @@ if [ ! -d "ncnn" ]; then
 fi
 
 cd ncnn/tools/pnnx
-mkdir -p build && cd build
+
+rm -rf build_wasm
+
+mkdir -p build_wasm && cd build_wasm
 
 echo ">>> 配置 CMake..."
 ORT_INC_DIR="$INSTALL_DIR/include/onnxruntime"
@@ -168,7 +179,6 @@ emcmake cmake .. \
     -DCMAKE_PREFIX_PATH="$INSTALL_DIR" \
     -DCMAKE_FIND_ROOT_PATH="$INSTALL_DIR" \
     -DTorch_DIR="$INSTALL_DIR/share/cmake/Torch" \
-    -DCMAKE_DISABLE_FIND_PACKAGE_TorchVision=TRUE \
     -DTorchVision_INSTALL_DIR="$INSTALL_DIR" \
     -Donnxruntime_INSTALL_DIR="$INSTALL_DIR" \
     -Donnxruntime_INCLUDE_DIR="$ORT_INC_DIR" \
@@ -180,16 +190,15 @@ emcmake cmake .. \
     -DCMAKE_EXE_LINKER_FLAGS="\
         $OPT_FLAGS \
         -s ALLOW_MEMORY_GROWTH=1 \
-        -s MAXIMUM_MEMORY=16GB \
+        -s MAXIMUM_MEMORY=4GB \
         -s FORCE_FILESYSTEM=1 \
         -s MODULARIZE=1 \
         -s EXPORT_NAME='createPnnxModule' \
         -s EXPORTED_RUNTIME_METHODS=['callMain','FS'] \
         -s ENVIRONMENT='web,worker' \
-        -s DISABLE_EXCEPTION_CATCHING=1 \
-        -s MALLOC='emmalloc' \
-        -s STACK_SIZE=52428800 \
-        -s INITIAL_MEMORY=134217728 \
+        -s NO_DISABLE_EXCEPTION_CATCHING=0 \
+        -s STACK_SIZE=536870912 \
+        -s INITIAL_MEMORY=671088640 \
         -L$INSTALL_DIR/lib \
         -Wl,--start-group \
         ${ONNX_LIBS} \
@@ -210,3 +219,5 @@ cp src/pnnx.js "$WORK_DIR/pnnx.js"
 echo ">>> 全部完成！"
 echo "最终文件："
 ls -lh "$WORK_DIR/pnnx.wasm" "$WORK_DIR/pnnx.js"
+
+cd "$WORK_DIR"
