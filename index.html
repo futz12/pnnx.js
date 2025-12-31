@@ -310,7 +310,6 @@
       white-space: pre-wrap;
     }
 
-    /* log header actions */
     .log-actions{
       display:flex;
       align-items:center;
@@ -356,7 +355,6 @@
     tr:last-child td{ border-bottom:none; }
     .right{ text-align:right; }
 
-    /* Donate: round floating bottom-right */
     .donate-fab{
       position:fixed;
       right: 16px;
@@ -381,7 +379,6 @@
     .donate-fab:active{ transform: translateY(1px); }
     .donate-fab .small{ font-size: 12.5px; line-height: 1; }
 
-    /* Modal */
     .modal{
       position:fixed;
       inset:0;
@@ -447,7 +444,6 @@
     .footer a{ color: var(--brand); text-decoration:none; }
     .footer a:hover{ text-decoration:underline; }
 
-    /* toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -661,8 +657,69 @@
   <!-- toast -->
   <div class="toast" id="toast">已复制到剪贴板</div>
 
-  <script src="pnnx.js"></script>
   <script>
+    const ASSET_SOURCE = "origin"; // "cdn" 或 "origin"
+
+    // CDN
+    const CDN_PNNX_JS   = "https://mirrors.sdu.edu.cn/ncnn_modelzoo/pnnx/pnnx.js";
+    const CDN_PNNX_WASM = "https://mirrors.sdu.edu.cn/ncnn_modelzoo/pnnx/pnnx.wasm";
+
+    // 源站（同源）：默认同目录 ./pnnx.js ./pnnx.wasm
+    // 如果你源站在别的路径，把 ORIGIN_BASE 改成例如："/ncnn_modelzoo/pnnx/"
+    const ORIGIN_BASE = "./";
+    const ORIGIN_PNNX_JS   = ORIGIN_BASE + "pnnx.js";
+    const ORIGIN_PNNX_WASM = ORIGIN_BASE + "pnnx.wasm";
+
+    const PNNX_JS   = (ASSET_SOURCE === "cdn") ? CDN_PNNX_JS   : ORIGIN_PNNX_JS;
+    const PNNX_WASM = (ASSET_SOURCE === "cdn") ? CDN_PNNX_WASM : ORIGIN_PNNX_WASM;
+
+    // Service Worker：强缓存 wasm（命中缓存就不联网）
+    (async function ensureSW() {
+      if (!("serviceWorker" in navigator)) return;
+      try {
+        await navigator.serviceWorker.register("./sw.js", { scope: "./" });
+      } catch (e) {
+        console.warn("SW 注册失败：", e);
+        return;
+      }
+
+      // 若首次加载还没被 SW 接管，自动刷新一次让它接管（只刷新一次）
+      if (!navigator.serviceWorker.controller && !sessionStorage.getItem("swReloadedOnce")) {
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (sessionStorage.getItem("swReloadedOnce")) return;
+          sessionStorage.setItem("swReloadedOnce", "1");
+          location.reload();
+        });
+      }
+    })();
+
+    // 静默处理 streaming MIME 错误：不再出现那两行
+    (function patchInstantiateStreaming() {
+      if (!WebAssembly.instantiateStreaming) return;
+      const orig = WebAssembly.instantiateStreaming.bind(WebAssembly);
+      WebAssembly.instantiateStreaming = async (source, importObject) => {
+        const resp = await source;
+        try {
+          return await orig(resp, importObject);
+        } catch (e) {
+          const bytes = await resp.arrayBuffer();
+          return await WebAssembly.instantiate(bytes, importObject);
+        }
+      };
+    })();
+
+    // 动态加载 pnnx.js（按 ASSET_SOURCE 选择）
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.crossOrigin = "anonymous";
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("pnnx.js 加载失败: " + src));
+        document.head.appendChild(s);
+      });
+    }
+
     // 收款码硬编码
     const WECHAT_QR_SRC = "./wechat.png";
     const ALIPAY_QR_SRC = "./alipay.png";
@@ -763,7 +820,6 @@
     // Copy log button
     const copyLogBtn = document.getElementById("copyLogBtn");
     async function copyText(text){
-      // Prefer navigator.clipboard; fallback for older browsers
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
         return;
@@ -781,7 +837,7 @@
     }
     copyLogBtn.addEventListener("click", async (e)=>{
       e.preventDefault();
-      e.stopPropagation(); // avoid toggling details
+      e.stopPropagation();
       const text = (consoleDiv.textContent || "").trim();
       if (!text) return showToast("日志为空，暂无可复制内容");
       try{
@@ -1050,7 +1106,7 @@
       return { ok:true, args };
     }
 
-    // Run (no time prefix)
+    // Run
     runBtn.addEventListener("click", async () => {
       if (!pnnxModule) return alert("WASM 还未加载完成。");
       const fileInput = modelFileEl;
@@ -1109,31 +1165,59 @@
       }
     });
 
-    // Init WASM
-    createPnnxModule({
-      print: (t)=>log(t),
-      printErr: (t)=>log("[STDERR] " + t),
-      setStatus: (t)=>{ if(t) log("[System] " + t); }
-    }).then(instance => {
-      pnnxModule = instance;
-      ensureWorkDir();
+    // ✅ 启动：加载 pnnx.js + 初始化 wasm
+    (async function boot() {
+      try {
+        await loadScript(PNNX_JS);
+      } catch (e) {
+        dotWasm.classList.add("bad");
+        wasmStatus.textContent = "加载失败";
+        log("❌ " + e.message);
+        return;
+      }
 
-      dotWasm.classList.add("ok");
-      wasmStatus.textContent = "WASM 已就绪";
+      if (typeof createPnnxModule !== "function") {
+        dotWasm.classList.add("bad");
+        wasmStatus.textContent = "加载失败";
+        log("❌ pnnx.js 已加载，但 createPnnxModule 不存在（文件不匹配？）");
+        return;
+      }
 
-      runBtn.disabled = false;
-      runBtn.textContent = "开始转换";
-      clearLogBtn.disabled = false;
-      refreshFilesBtn.disabled = false;
-      clearWorkBtn.disabled = false;
+      createPnnxModule({
+        locateFile: (path) => {
+          if (path.endsWith(".wasm")) return PNNX_WASM;  // ✅ 按开关选择 wasm
+          return path;
+        },
+        print: (t)=>log(t),
+        printErr: (t)=>{
+          const s = String(t || "");
+          // 双保险：不在页面日志显示这两句
+          if (s.includes("wasm streaming compile failed") ||
+              s.includes("falling back to ArrayBuffer instantiation")) return;
+          log("[STDERR] " + s);
+        },
+        setStatus: (t)=>{ if(t) log("[System] " + t); }
+      }).then(instance => {
+        pnnxModule = instance;
+        ensureWorkDir();
 
-      refreshFileListUI();
-      log("✅ PNNX 模块加载完成。");
-    }).catch(err => {
-      dotWasm.classList.add("bad");
-      wasmStatus.textContent = "加载失败";
-      log("❌ 模块加载失败: " + err);
-    });
+        dotWasm.classList.add("ok");
+        wasmStatus.textContent = "WASM 已就绪";
+
+        runBtn.disabled = false;
+        runBtn.textContent = "开始转换";
+        clearLogBtn.disabled = false;
+        refreshFilesBtn.disabled = false;
+        clearWorkBtn.disabled = false;
+
+        refreshFileListUI();
+        log("✅ PNNX 模块加载完成。");
+      }).catch(err => {
+        dotWasm.classList.add("bad");
+        wasmStatus.textContent = "加载失败";
+        log("❌ 模块加载失败: " + err);
+      });
+    })();
   </script>
 </body>
 </html>
