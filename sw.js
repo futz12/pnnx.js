@@ -1,18 +1,23 @@
-const CACHE_NAME = "pnnx-assets-v2";
+// sw.js
+const SRC_MODE = (new URL(self.location.href)).searchParams.get("src") || "cdn"; // "cdn" | "origin"
+const CACHE_NAME = `pnnx-assets-v2-${SRC_MODE}`;
 
 const CDN_JS   = "https://mirrors.sdu.edu.cn/ncnn_modelzoo/pnnx/pnnx.js";
 const CDN_WASM = "https://mirrors.sdu.edu.cn/ncnn_modelzoo/pnnx/pnnx.wasm";
+
+const ORIGIN_JS   = "./pnnx.js";
+const ORIGIN_WASM = "./pnnx.wasm";
+
+function getAssetList() {
+  if (SRC_MODE === "origin") return [ORIGIN_JS, ORIGIN_WASM];
+  return [CDN_JS, CDN_WASM];
+}
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    await Promise.allSettled([
-      cache.add(CDN_JS),
-      cache.add(CDN_WASM),
-      cache.add("./pnnx.js").catch(()=>{}),
-      cache.add("./pnnx.wasm").catch(()=>{}),
-    ]);
+    await cache.addAll(getAssetList());
   })());
 });
 
@@ -35,10 +40,13 @@ function shouldHandle(requestUrl) {
   try {
     const u = new URL(requestUrl);
 
-    if (u.href === CDN_JS || u.href === CDN_WASM) return true;
+    if (SRC_MODE === "cdn") {
+      return (u.href === CDN_JS || u.href === CDN_WASM);
+    }
 
+    // origin 模式：只处理本站的 pnnx.js/pnnx.wasm
     if (u.origin === self.location.origin) {
-      if (u.pathname.endsWith("/pnnx.js") || u.pathname.endsWith("/pnnx.wasm")) return true;
+      return u.pathname.endsWith("/pnnx.js") || u.pathname.endsWith("/pnnx.wasm");
     }
   } catch (_) {}
   return false;
@@ -61,6 +69,7 @@ self.addEventListener("fetch", (event) => {
         const u = new URL(event.request.url);
         const isWasm = u.pathname.endsWith(".wasm");
         if (isWasm && resp.body && resp.type !== "opaque") {
+          // wasm 类型修正（某些镜像站/代理可能缺失 content-type）
           const headers = new Headers(resp.headers);
           headers.set("Content-Type", "application/wasm");
           const fixed = new Response(resp.body, {

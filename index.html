@@ -3,7 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PNNX 在线转换</title>
+  <meta name="theme-color" content="#2563eb">
+  <meta name="msapplication-TileColor" content="#2563eb">
+
+  <link rel="icon" type="image/png" href="/56149058.png">
+  <link rel="apple-touch-icon" href="/56149058.png">
+
+  <title>PNNX 在线模型转换工具 | PyTorch(.pt)/ONNX(.onnx) 转 NCNN(.param/.bin)</title>
+  <meta name="description" content="PNNX 在线模型转换工具：支持 PyTorch TorchScript(.pt) 与 ONNX(.onnx) 一键转换为 NCNN（.param/.bin）。基于 WebAssembly，本地运行不上传模型，安全高效。支持 inputshape / fp16 / optlevel 等参数。">
+  <meta name="keywords" content="PNNX,在线模型转换,ONNX转NCNN,PyTorch转NCNN,pnnx wasm,ncnn,param bin,inputshape,YOLO 转 ncnn,模型转换工具">
+
+  <link rel="canonical" href="https://pnnx.pchar.cn/">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+
+  <meta property="og:title" content="PNNX 在线模型转换工具 | PyTorch/ONNX 转 NCNN">
+  <meta property="og:description" content="本地运行的 PNNX 在线转换：不上传模型，支持 inputshape/fp16/optlevel，输出 NCNN .param/.bin。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://pnnx.pchar.cn/">
+  <meta property="og:site_name" content="PNNX 在线转换">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="PNNX 在线模型转换工具">
+  <meta name="twitter:description" content="PyTorch(.pt)/ONNX(.onnx) 转 NCNN(.param/.bin)，本地运行不上传模型。">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "PNNX 在线模型转换工具",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Web",
+    "url": "https://pnnx.pchar.cn/",
+    "description": "基于 WebAssembly 的 PNNX 在线模型转换工具，将 PyTorch TorchScript(.pt) 或 ONNX(.onnx) 转换为 NCNN(.param/.bin)，本地运行不上传模型。",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "CNY"
+    }
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "支持 .pth 模型文件吗？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "不支持 .pth 格式。请将模型导出为 TorchScript(.pt) 或 ONNX(.onnx) 格式后再使用本工具转换。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "转换失败怎么办？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "请复制运行日志检查不支持的算子；必要时补充 inputshape 参数指定输入维度。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "YOLO 模型推荐设置？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "常见使用 inputshape=[1,3,640,640]f32，如需动态维度可再设置 inputshape2=[1,3,320,320]f32。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "模型会上传到服务器吗？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "不会。本工具基于 WebAssembly 在浏览器本地运行，所有转换过程都在您的浏览器中完成，模型文件不会上传到任何服务器。"
+        }
+      }
+    ]
+  }
+  </script>
+
   <style>
     :root{
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
@@ -25,7 +104,6 @@
 
       --pillBg:#fafafa;
       --panelBg:#fafafa;
-      --modalMask: rgba(0,0,0,.55);
 
       --inputBg: #ffffff;
       --inputText: #111827;
@@ -54,7 +132,6 @@
 
       --pillBg: rgba(2,6,23,.35);
       --panelBg: rgba(2,6,23,.22);
-      --modalMask: rgba(0,0,0,.65);
 
       --inputBg: rgba(2,6,23,.25);
       --inputText: #e5e7eb;
@@ -346,84 +423,6 @@
     tr:last-child td{ border-bottom:none; }
     .right{ text-align:right; }
 
-    .donate-fab{
-      position:fixed;
-      right: 16px;
-      bottom: 16px;
-      width: 56px;
-      height: 56px;
-      border-radius: 999px;
-      background: var(--brand);
-      color:#fff;
-      box-shadow: var(--shadow);
-      border: 1px solid rgba(255,255,255,.14);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      user-select:none;
-      z-index: 1200;
-      font-weight: 900;
-      letter-spacing: .5px;
-    }
-    .donate-fab:hover{ background: var(--brand2); }
-
-    .modal{
-      position:fixed;
-      inset:0;
-      background: rgba(0,0,0,.55);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:2000;
-      padding: 16px;
-    }
-    html[data-theme="dark"] .modal{ background: rgba(0,0,0,.65); }
-    .modal.show{ display:flex; }
-    .modal-card{
-      width: min(860px, 100%);
-      background: var(--card);
-      border-radius: 16px;
-      border:1px solid var(--line);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .modal-head{
-      padding: 12px 14px;
-      border-bottom:1px solid var(--line);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .modal-head .t{ font-weight:900; }
-    .modal-body{ padding: 14px; }
-    .qr-grid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media(max-width:760px){ .qr-grid{ grid-template-columns:1fr; } }
-    .qr-card{
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding: 12px;
-      background:var(--panelBg);
-    }
-    .qr-card .h{ font-weight:900; margin-bottom:8px; }
-    .qr-img{
-      width:100%;
-      aspect-ratio: 1 / 1;
-      border:1px dashed var(--line);
-      border-radius:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-      background: transparent;
-    }
-    .qr-img img{ width:100%; height:100%; object-fit:contain; }
-
     .footer{
       margin-top: 14px;
       padding: 12px 0 4px;
@@ -506,12 +505,46 @@
     .overlay-text .d{ color: var(--muted); font-size: 12.5px; line-height: 1.35; }
   </style>
 </head>
+
 <body>
+  <noscript>
+    <div style="position:fixed;inset:0;background:#0b1020;color:#fff;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
+      <div>
+        <h1 style="font-size:24px;margin-bottom:16px;">请启用 JavaScript</h1>
+        <p style="opacity:0.8;">本工具需要 JavaScript 才能运行。</p>
+      </div>
+    </div>
+  </noscript>
+  <div id="wasmCheck" style="position:fixed;inset:0;background:#0b1020;color:#fff;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;z-index:9999;">
+    <div>
+      <h1 style="font-size:24px;margin-bottom:16px;">正在检查浏览器兼容性…</h1>
+    </div>
+  </div>
+  <script>
+    (function(){
+      var wasmCheck = document.getElementById("wasmCheck");
+      var supported = false;
+      try {
+        supported = typeof WebAssembly === "object" && typeof WebAssembly.Memory === "function";
+        if (supported) {
+          var mem = new WebAssembly.Memory({ initial: 1, maximum: 1 });
+          supported = mem.buffer instanceof ArrayBuffer;
+        }
+      } catch(e) {
+        supported = false;
+      }
+      if (!supported) {
+        wasmCheck.innerHTML = '<div><h1 style="font-size:24px;margin-bottom:16px;">浏览器不支持 WebAssembly</h1><p style="opacity:0.8;margin-bottom:12px;">本工具需要 WebAssembly 支持才能运行。</p><p style="opacity:0.7;">请使用最新版本的 Chrome、Firefox、Safari 或 Edge 浏览器。</p></div>';
+        throw new Error("WebAssembly not supported");
+      }
+      wasmCheck.style.display = "none";
+    })();
+  </script>
   <div class="wrap">
     <div class="header">
       <div class="title">
         <h1>PNNX 在线转换</h1>
-        <p>本网站基于wasm技术，不会上传您的模型，请放心使用。</p>
+        <p>基于 WebAssembly，本地运行，不上传您的模型文件。</p>
       </div>
       <div class="status">
         <div class="pill"><span class="dot" id="dotWasm"></span><span id="wasmStatus">WASM 加载中…</span></div>
@@ -557,9 +590,6 @@
               <input type="checkbox" id="autoClearBeforeRun" checked>
               <span>运行前清空输出区（仅清空输出，不影响当前模型）</span>
             </div>
-            <div class="hint">
-              规则：不拖入新模型时可继续使用旧模型；拖入新模型后，会在新模型写入成功后再替换并删除旧模型。
-            </div>
           </div>
 
           <div class="section">
@@ -574,12 +604,12 @@
               <button class="btn-ghost" type="button" id="add_inputshape">+ 添加输入</button>
               <button class="btn-ghost" type="button" id="preset_yolo_inputshape">YOLO 640</button>
               <button class="btn-ghost" type="button" id="preset_two_inputs">双输入示例</button>
-              <button class="btn-secondary" type="button" id="clear_inputshape">清空（自动推断）</button>
+              <button class="btn-secondary" type="button" id="clear_inputshape">清空</button>
               <button class="btn-danger" type="button" id="reset_inputshape">重置默认</button>
             </div>
 
             <div class="preview" id="preview_inputshape"></div>
-            <div class="hint">dtype：<span class="mono">u8 / i32 / f32 / f16</span></div>
+            <div class="hint">dtype：<span class="mono">u8 / i32 / f32</span></div>
           </div>
 
           <div class="section">
@@ -630,7 +660,6 @@
                     <option value="0">0</option>
                     <option value="1">1</option>
                     <option value="2" selected>2（常用）</option>
-                    <option value="3">3</option>
                   </select>
                 </div>
               </div>
@@ -651,15 +680,25 @@
       </div>
 
       <div class="card">
+        <details open id="cmdDetails">
+          <summary>
+            <span>调用命令</span>
+            <span class="rightcue"><span class="toggleText">点击收起</span> <span class="chev" aria-hidden="true" style="transform:rotate(90deg)"></span></span>
+          </summary>
+          <div class="inner">
+            <div id="cmdPreview" class="preview" style="min-height:auto;padding:10px 12px;font-size:12px;">pnnx model.pt</div>
+          </div>
+        </details>
+
         <details open id="filesDetails">
           <summary>
-            <span>输出文件（下载/删除）</span>
+            <span>输出文件</span>
             <span class="rightcue"><span class="toggleText">点击收起</span> <span class="chev" aria-hidden="true" style="transform:rotate(90deg)"></span></span>
           </summary>
           <div class="inner">
             <div class="grid-2">
               <div>
-                <label>搜索文件名（可选）</label>
+                <label>搜索文件名</label>
                 <input type="text" id="fileSearch" placeholder="例如：ncnn / param / bin / py / onnx">
               </div>
               <div>
@@ -682,7 +721,7 @@
           <summary>
             <span>运行日志</span>
             <div class="log-actions">
-              <span class="hint" style="margin:0;">遇到转换问题？点“复制日志”更方便排查</span>
+              <span class="hint" style="margin:0;">遇到转换问题？点“复制日志”发送给大佬！</span>
               <button class="copy-btn" id="copyLogBtn" type="button">复制日志</button>
               <span class="rightcue"><span class="toggleText">点击收起</span> <span class="chev" aria-hidden="true" style="transform:rotate(90deg)"></span></span>
             </div>
@@ -694,36 +733,46 @@
       </div>
     </div>
 
+    <!-- SEO: 可见内容区（可折叠，但不是隐藏文本；三大搜索引擎都能索引） -->
+    <section class="card" style="margin-top:12px;">
+      <div class="body">
+        <h2 style="margin:0 0 8px;font-size:16px;">PNNX 在线模型转换说明</h2>
+        <p class="hint" style="margin:0 0 10px;">
+          本工具基于 WebAssembly 在浏览器本地运行，将 TorchScript(.pt) 或 ONNX(.onnx) 转换为 NCNN（.param/.bin）。
+          转换过程中不会上传模型文件，适合用于 Android/嵌入式部署与快速验证。
+        </p>
+
+        <details>
+          <summary>常用参数与 inputshape 写法</summary>
+          <div class="inner">
+            <ul style="margin:0;padding-left:18px;line-height:1.7;">
+              <li><b>inputshape</b>：指定输入维度，例如 <span class="mono">[1,3,640,640]f32</span>；多输入示例：<span class="mono">[1,3,640,640]f32,[1,160]f32</span></li>
+              <li><b>inputshape2</b>：用于动态维度判断，例如 <span class="mono">[1,3,320,320]f32</span>。</li>
+              <li><b>optlevel</b>：优化级别，通常 2 常用；</li>
+              <li><b>fp16</b>：开启可减小模型与提升速度，但可能影响精度。</li>
+              <li><b>moduleop</b>：逗号分隔的模块算子列表（高级用法）。</li>
+            </ul>
+          </div>
+        </details>
+
+        <details style="margin-top:10px;">
+          <summary>常见问题（FAQ）</summary>
+          <div class="inner">
+            <ul style="margin:0;padding-left:18px;line-height:1.7;">
+              <li><b>支持 .pth 吗？</b> 不支持。请导出 TorchScript(.pt) 或 ONNX(.onnx)。</li>
+              <li><b>转换失败怎么办？</b> 复制运行日志检查不支持算子；必要时补 inputshape。</li>
+              <li><b>YOLO 推荐设置？</b> 常见用 <span class="mono">inputshape=[1,3,640,640]f32</span>，如需动态维度可再设置 <span class="mono"></span>inputshape2=[1,3,320,320]f32</span>。</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+    </section>
+
     <div class="footer">
       <div>赣ICP备2025053899号-1</div>
       <div>
         GitHub：<a href="https://github.com/futz12" target="_blank" rel="noopener noreferrer">github.com/futz12</a> ·
         QQ群：<span class="mono">767178345</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="donate-fab" id="donateFab" title="捐赠">
-    <div class="small">捐赠</div>
-  </div>
-
-  <div class="modal" id="donateModal" aria-hidden="true">
-    <div class="modal-card" role="dialog" aria-modal="true">
-      <div class="modal-head">
-        <div class="t">捐赠支持</div>
-        <button class="btn-secondary" id="donateCloseBtn" type="button" style="height:34px;padding:0 12px;border-radius:10px;">关闭</button>
-      </div>
-      <div class="modal-body">
-        <div class="qr-grid" style="margin-top:12px;">
-          <div class="qr-card">
-            <div class="h">微信收款码</div>
-            <div class="qr-img"><img id="wechatImg" alt="微信收款码"></div>
-          </div>
-          <div class="qr-card">
-            <div class="h">支付宝收款码</div>
-            <div class="qr-img"><img id="alipayImg" alt="支付宝收款码"></div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -764,7 +813,8 @@
   </div>
 
   <script>
-    const ASSET_SOURCE = "origin";
+    // 资源来源： "cdn" 或 "origin"
+    const ASSET_SOURCE = "cdn";
 
     const CDN_PNNX_JS   = "https://mirrors.sdu.edu.cn/ncnn_modelzoo/pnnx/pnnx.js";
     const CDN_PNNX_WASM = "https://mirrors.sdu.edu.cn/ncnn_modelzoo/pnnx/pnnx.wasm";
@@ -776,10 +826,12 @@
     const PNNX_JS   = (ASSET_SOURCE === "cdn") ? CDN_PNNX_JS   : ORIGIN_PNNX_JS;
     const PNNX_WASM = (ASSET_SOURCE === "cdn") ? CDN_PNNX_WASM : ORIGIN_PNNX_WASM;
 
+    // 建议：SW 注册 URL 带 src=cdn/origin（配合你后续 sw.js 读取可彻底避免错误预缓存）
     (async function ensureSW() {
       if (!("serviceWorker" in navigator)) return;
       try {
-        await navigator.serviceWorker.register("./sw.js", { scope: "./" });
+        const swUrl = `./sw.js?src=${encodeURIComponent(ASSET_SOURCE)}`;
+        await navigator.serviceWorker.register(swUrl, { scope: "./" });
       } catch (e) {
         console.warn("SW 注册失败：", e);
         return;
@@ -803,11 +855,6 @@
         document.head.appendChild(s);
       });
     }
-
-    const WECHAT_QR_SRC = "./wechat.png";
-    const ALIPAY_QR_SRC = "./alipay.png";
-    document.getElementById("wechatImg").src = WECHAT_QR_SRC;
-    document.getElementById("alipayImg").src = ALIPAY_QR_SRC;
 
     const themeBtn = document.getElementById("themeBtn");
     const mediaDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
@@ -842,7 +889,7 @@
       detailsEl.addEventListener("toggle", update);
       update();
     }
-    ["advDetails","filesDetails","logDetails"].forEach(id=>{
+    ["advDetails","filesDetails","logDetails","cmdDetails"].forEach(id=>{
       const el = document.getElementById(id);
       if (el) bindDetailsToggleText(el);
     });
@@ -883,16 +930,7 @@
     const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
     const fileListHint = document.getElementById("fileListHint");
     const fileTableWrap = document.getElementById("fileTableWrap");
-
-    const donateFab = document.getElementById("donateFab");
-    const donateModal = document.getElementById("donateModal");
-    const donateCloseBtn = document.getElementById("donateCloseBtn");
-    function openDonate(){ donateModal.classList.add("show"); donateModal.setAttribute("aria-hidden","false"); }
-    function closeDonate(){ donateModal.classList.remove("show"); donateModal.setAttribute("aria-hidden","true"); }
-    donateFab.addEventListener("click", openDonate);
-    donateCloseBtn.addEventListener("click", closeDonate);
-    donateModal.addEventListener("click", (e)=>{ if(e.target === donateModal) closeDonate(); });
-    window.addEventListener("keydown",(e)=>{ if(e.key === "Escape") closeDonate(); });
+    const cmdPreview = document.getElementById("cmdPreview");
 
     const toastEl = document.getElementById("toast");
     let toastTimer = null;
@@ -1083,24 +1121,6 @@
     function escapeHtml(s){
       return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
     }
-    function fileBadge(name){
-      const n = name.toLowerCase();
-      let t = "file";
-      if (n.endsWith(".param")) t = "param";
-      else if (n.endsWith(".bin")) t = "bin";
-      else if (n.endsWith(".py")) t = "py";
-      else if (n.endsWith(".onnx")) t = "onnx";
-      else if (n.endsWith(".pt")) t = "pt";
-      return `<span style="
-        display:inline-flex;align-items:center;
-        padding:2px 8px;border-radius:999px;
-        border:1px solid var(--line);
-        background: rgba(148,163,184,.14);
-        color: var(--muted);
-        font-size:12px;font-weight:900;
-        margin-right:8px;
-      ">${t}</span>`;
-    }
 
     // 仅默认勾选 .ncnn.bin / .ncnn.param
     function defaultCheckedFor(name){
@@ -1116,7 +1136,6 @@
       }
       ensureWorkDir();
 
-      // 临时路径（确保新模型写入成功前旧模型可继续用）
       const ext = file.name.toLowerCase().endsWith(".onnx") ? "onnx" : "pt";
       const incomingName = `__incoming__${Date.now()}.${ext}`;
       const incomingPath = `${MODELS_DIR}/${incomingName}`;
@@ -1125,20 +1144,17 @@
       await writeFileToFS(file, incomingPath);
       log(`✅ 新模型写入完成(临时): ${file.name}`);
 
-      // 新模型写入成功后再替换旧模型
       const finalPath = `${MODELS_DIR}/${file.name}`;
 
       if (currentModelPath && currentModelPath !== finalPath) {
         try { pnnxModule.FS.unlink(currentModelPath); log(`🧹 已删除旧模型: ${currentModelName}`); } catch(e) {}
       }
 
-      // 若 finalPath 已存在（比如同名重复导入），先删
       try { pnnxModule.FS.unlink(finalPath); } catch(e) {}
 
       try {
         pnnxModule.FS.rename(incomingPath, finalPath);
       } catch (e) {
-        // rename 失败就复制+删临时
         const bytes = pnnxModule.FS.readFile(incomingPath);
         pnnxModule.FS.writeFile(finalPath, bytes);
         try { pnnxModule.FS.unlink(incomingPath); } catch(_) {}
@@ -1147,12 +1163,11 @@
       currentModelPath = finalPath;
       currentModelName = file.name;
 
-      modelHint.textContent = `当前模型：${file.name} · ${humanBytes(file.size)}（可重复转换）`;
+      modelHint.textContent = `当前模型：${file.name} · ${humanBytes(file.size)}`;
 
-      // 清空 input：确保“没拖新模型也能继续用旧模型”
       try { modelFileEl.value = ""; } catch(e) {}
-
       refreshFileListUI();
+      updateCmdPreview();
     }
 
     async function onPickOrDropFile(file){
@@ -1254,8 +1269,7 @@
         if (token) tokens.push(token);
       }
       if (!tokens.length) return "";
-      if (tokens.length === 1) return tokens[0];
-      return `[${tokens.join(",")}]`;
+      return tokens.join(",");
     }
 
     function updateShapePreviewFor(listEl, previewEl, emptyText) {
@@ -1266,6 +1280,7 @@
     function updateShapePreview() {
       updateShapePreviewFor(list_inputshape, preview_inputshape, "（未设置 inputshape：将使用自动推断）");
       updateShapePreviewFor(list_inputshape2, preview_inputshape2, "（未设置 inputshape2：将不传入该参数）");
+      updateCmdPreview();
     }
 
     document.getElementById("add_inputshape").addEventListener("click", () => addShapeRow(list_inputshape, "1,3,224,224", "f32"));
@@ -1301,7 +1316,7 @@
       addShapeRow(list_inputshape2, "1,3,320,320", "f32");
     });
 
-    addShapeRow(list_inputshape, "1,3,224,224", "f32");
+    list_inputshape.innerHTML = "";
     list_inputshape2.innerHTML = "";
     updateShapePreview();
 
@@ -1330,6 +1345,14 @@
       return args;
     }
 
+    function updateCmdPreview() {
+      const modelName = currentModelName || "model.pt";
+      const args = buildArgs(modelName);
+      cmdPreview.textContent = "pnnx " + args.join(" ");
+    }
+
+    updateCmdPreview();
+
     // Files UI
     let cachedFiles = [];
     function renderFileTable() {
@@ -1341,16 +1364,13 @@
         return;
       }
 
+      // ✅ 文件名列：只显示文件名（不显示“py徽标”与“(模型)”）
       const rows = files.map(f => {
         const checked = defaultCheckedFor(f.name) ? "checked" : "";
         return `
           <tr>
             <td style="width:36px;"><input class="fileCheck" type="checkbox" ${checked} data-full="${f.full}"></td>
-            <td class="mono">
-              ${fileBadge(f.name)}
-              ${escapeHtml(f.name)}
-              ${f.dir === MODELS_DIR ? `<span style="margin-left:8px;color:var(--muted);font-weight:900;font-size:12px;">(模型)</span>` : ``}
-            </td>
+            <td class="mono">${escapeHtml(f.name)}</td>
             <td class="right" style="color:var(--muted)">${escapeHtml(humanBytes(f.size))}</td>
             <td style="width:190px;">
               <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
@@ -1502,6 +1522,21 @@
       refreshFileListUI();
     });
 
+    // optlevel 警告
+    const optlevelEl = document.getElementById("optlevel");
+    optlevelEl.addEventListener("change", () => {
+      const val = optlevelEl.value;
+      if (val === "0" || val === "1") {
+        alert("警告：optlevel 设为 0 或 1 将不会导出ncnn只会导出中间表示，除非你知道自己在干什么否则建议使用默认值。");
+      }
+      updateCmdPreview();
+    });
+
+    document.getElementById("device").addEventListener("change", updateCmdPreview);
+    document.getElementById("fp16").addEventListener("change", updateCmdPreview);
+    document.getElementById("moduleop").addEventListener("input", updateCmdPreview);
+    document.getElementById("extraArgs").addEventListener("input", updateCmdPreview);
+
     // Run
     runBtn.addEventListener("click", async () => {
       if (!pnnxModule) return alert("WASM 还未加载完成。");
@@ -1573,6 +1608,11 @@
 
       createPnnxModule({
         wasmBinary,
+        // 强制 wasm 路径（避免 emscripten 自动回退到本地 ./pnnx.wasm）
+        locateFile: (path) => {
+          if (String(path).endsWith(".wasm")) return PNNX_WASM;
+          return path;
+        },
         print: (t)=>log(t),
         printErr: (t)=>{
           const s = String(t || "");
@@ -1594,11 +1634,9 @@
         refreshFilesBtn.disabled = false;
         clearWorkBtn.disabled = false;
 
-        // 如果 models 目录里有模型（取最近一个当当前模型）
+        // 如果 models 目录里有模型（取第一个作为当前模型）
         const models = listFiles(MODELS_DIR);
         if (models.length) {
-          // 取按名字排序的最后一个并不等价“最新”，这里直接取第一个也行；
-          // 你要严格“最新”，可用文件名时间戳策略。此处按现状：取第一个。
           const m = models[0];
           currentModelPath = m.full;
           currentModelName = m.name;
